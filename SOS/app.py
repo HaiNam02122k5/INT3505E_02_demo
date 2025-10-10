@@ -68,7 +68,7 @@ class Transaction(db.Model):
 with app.app_context():
     db.create_all()
     if not User.query.first():
-        admin_user = User(username='admin', password='12345678') # Mật khẩu demo
+        admin_user = User(username='admin', password='12345678') # Mật khẩu Pr5_5
         db.session.add(admin_user)
         db.session.commit()
 
@@ -87,7 +87,6 @@ def login():
     # 1. Kiểm tra người dùng (Trong thực tế, kiểm tra mật khẩu đã hash)
     user = User.query.filter_by(username=username).first()
 
-    # Giả sử mật khẩu là 'secret' cho tất cả người dùng demo (Không an toàn!)
     if user and password == '12345678':
         # 2. Tạo access token. Identity (danh tính) thường là ID người dùng
         access_token = create_access_token(identity=user.id)
