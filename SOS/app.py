@@ -1,13 +1,26 @@
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, JWTManager
+from datetime import datetime, timedelta
 
 # Khởi tạo ứng dụng Flask
 app = Flask(__name__)
 # Cấu hình cơ sở dữ liệu SQLite
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///library.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Cấu hình JWT
+app.config["JWT_SECRET_KEY"] = "SOS"
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(minutes=30)
+
 db = SQLAlchemy(app)
+jwt = JWTManager(app)
+
+class User(db.Model):
+    """Mô hình người dùng đơn giản cho mục đích minh họa"""
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password = db.Column(db.String(200), nullable=False)
 
 class Book(db.Model):
     """Mô hình cho Sách"""
@@ -54,14 +67,43 @@ class Transaction(db.Model):
 
 with app.app_context():
     db.create_all()
+    if not User.query.first():
+        admin_user = User(username='admin', password='12345678') # Mật khẩu demo
+        db.session.add(admin_user)
+        db.session.commit()
 
 @app.route('/api/')
 def start():
     return "Chào mừng đến với Thư Viện!"
 
+"""------------USER---------------"""
+@app.route('/api/login', methods=['POST'])
+def login():
+    """Tạo JWT khi đăng nhập thành công"""
+    data = request.get_json()
+    username = data.get('username', None)
+    password = data.get('password', None)
+
+    # 1. Kiểm tra người dùng (Trong thực tế, kiểm tra mật khẩu đã hash)
+    user = User.query.filter_by(username=username).first()
+
+    # Giả sử mật khẩu là 'secret' cho tất cả người dùng demo (Không an toàn!)
+    if user and password == '12345678':
+        # 2. Tạo access token. Identity (danh tính) thường là ID người dùng
+        access_token = create_access_token(identity=user.id)
+        # 3. Trả về token cho client
+        return jsonify(access_token=access_token), 200
+    else:
+        return jsonify({"msg": "Tên đăng nhập hoặc mật khẩu không đúng"}), 401
+
+"""------------BOOK---------------"""
 @app.route('/api/books', methods=['POST'])
+@jwt_required()
 def create_book():
     """Thêm sách mới (Create)"""
+    current_user_id = get_jwt_identity()
+    print(f"Người dùng ID {current_user_id} đang thêm sách.")
+
     data = request.get_json()
     if not data or not all(k in data for k in ('title', 'author', 'isbn')):
         return jsonify({'message': 'Thiếu trường dữ liệu cần thiết (title, author, isbn)'}), 400
@@ -102,6 +144,9 @@ def get_book(book_id):
 @app.route('/api/books/<int:book_id>', methods=['PUT'])
 def update_book(book_id):
     """Cập nhật thông tin sách (Update)"""
+    current_user_id = get_jwt_identity()
+    print(f"Người dùng ID {current_user_id} đang cập nhật thông tin sách.")
+
     book = Book.query.get(book_id)
     if not book:
         return jsonify({'message': 'Không tìm thấy sách.'}), 404
@@ -122,6 +167,9 @@ def update_book(book_id):
 @app.route('/api/books/<int:book_id>', methods=['DELETE'])
 def delete_book(book_id):
     """Xóa sách (Delete)"""
+    current_user_id = get_jwt_identity()
+    print(f"Người dùng ID {current_user_id} đang xóa sách.")
+
     book = Book.query.get(book_id)
     if not book:
         return jsonify({'message': 'Không tìm thấy sách.'}), 404
@@ -137,10 +185,13 @@ def delete_book(book_id):
         db.session.rollback()
         return jsonify({'message': 'Lỗi khi xóa sách.'}), 500
 
-
+"""------------TRANSACTION---------------"""
 @app.route('/api/borrow', methods=['POST'])
 def borrow_book_api():
     """Tạo giao dịch mượn sách"""
+    current_user_id = get_jwt_identity()
+    print(f"Người dùng ID {current_user_id} đang mượn sách.")
+
     data = request.get_json()
     required_fields = ('book_id', 'borrower_name')
     if not data or not all(k in data for k in required_fields):
@@ -173,6 +224,9 @@ def borrow_book_api():
 @app.route('/api/return/<int:book_id>', methods=['POST'])
 def return_book_api(book_id):
     """Hoàn tất giao dịch (trả sách)"""
+    current_user_id = get_jwt_identity()
+    print(f"Người dùng ID {current_user_id} đang trả sách.")
+
     book = Book.query.get(book_id)
     if not book:
         return jsonify({'message': 'Không tìm thấy sách với ID này.'}), 404
