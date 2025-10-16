@@ -1,11 +1,15 @@
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, JWTManager
+from flask_restx import Api, Resource, fields
 from flask_caching import Cache
 from datetime import datetime, timedelta
 
+from sqlalchemy.orm import backref
+
 # Khởi tạo ứng dụng Flask
 app = Flask(__name__)
+
 # Cấu hình cơ sở dữ liệu SQLite
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///library.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -18,6 +22,52 @@ app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(minutes=30)
 app.config['CACHE_TYPE'] = 'SimpleCache'
     # Thời gian timeout tính theo giây
 app.config['CACHE_DEFAULT_TIMEOUT'] = 300
+
+# Cấu hình Swagger tự động
+authorizations = {
+    'jwt': {
+        'type': 'apiKey',
+        'in': 'header',
+        'name': 'Authorization',
+        'description': "Type in the *'Value'* input field: **Bearer <JWT>**, where JWT is the access token"
+    }
+}
+
+api = Api(
+    app,
+    version="1.0",
+    title="Book Management API",
+    description="Tài liệu API tự động sinh bằng Flask-RESTX",
+    doc="/docs/",
+    security='jwt', # Mặc định bảo vệ tất cả endpoint
+    authorizations=authorizations # Định nghĩa cách thức bảo vệ
+)
+
+user_ns = api.namespace("Users", path="/api/users", description="CRUD operations for users")
+book_ns = api.namespace("Books", path="/api/books", description="CRUD operations for books")
+transaction_ns = api.namespace("Transactions", path="/api/transactions", description="CRUD operations for transactions")
+
+# --- Mô hình dữ liệu Swagger ---
+login_model = api.model('Login', {
+    'username': fields.String(required=True, description='Tên đăng nhập'),
+    'password': fields.String(required=True, description='Mật khẩu')
+})
+
+book_model = api.model('Book', {
+    'id': fields.Integer(readonly=True, description='Book ID'),
+    'title': fields.String(required=True, description='Book title'),
+    'author': fields.String(required=True, description='Book author'),
+    'isbn': fields.String(description='Book ISBN'),
+    'copies': fields.Integer(description='Book copies')
+})
+
+transaction_model = api.model('Transaction', {
+    'id': fields.Integer(readonly=True, description='Transaction ID'),
+    'book_id': fields.Integer(readonly=True, description='Book ID'),
+    'borrower_id': fields.Integer(readonly=True, description='Borrower ID'),
+    'borrow_date': fields.String(readonly=True, description='Borrow Date'),
+'   return_date': fields.String(readonly=True, description='Return Date')
+})
 
 db = SQLAlchemy(app)
 jwt = JWTManager(app)
@@ -35,8 +85,7 @@ class Book(db.Model):
     title = db.Column(db.String(100), nullable=False)
     author = db.Column(db.String(100), nullable=False)
     isbn = db.Column(db.String(20), unique=True, nullable=False)
-    # 0: available (sẵn có), 1: borrowed (đang mượn)
-    status = db.Column(db.Integer, default=0, nullable=False)
+    copies = db.Column(db.Integer, nullable=False)
 
     def to_dict(self):
         """Chuyển đổi đối tượng Book sang dictionary để trả về JSON"""
@@ -45,18 +94,18 @@ class Book(db.Model):
             'title': self.title,
             'author': self.author,
             'isbn': self.isbn,
-            'status': 'borrowed' if self.status == 1 else 'available'
+            'copies': self.copies
         }
-
 
 class Transaction(db.Model):
     """Mô hình cho Giao dịch Mượn/Trả"""
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     book_id = db.Column(db.Integer, db.ForeignKey('book.id'), nullable=False)
-    borrower_name = db.Column(db.String(100), nullable=False)
     borrow_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     return_date = db.Column(db.DateTime, nullable=True)  # None nếu chưa được trả
 
+    user = db.relationship('User', backref=db.backref('transactions', lazy=True))
     book = db.relationship('Book', backref=db.backref('transactions', lazy=True))
 
     def to_dict(self):
@@ -65,12 +114,11 @@ class Transaction(db.Model):
             'id': self.id,
             'book_id': self.book_id,
             'book_title': self.book.title,
-            'borrower_name': self.borrower_name,
+            'borrower_id': self.user_id,
+            'borrower_name': self.user.username,
             'borrow_date': self.borrow_date.isoformat(),
-            'return_date': self.return_date.isoformat() if self.return_date else None,
-            'is_open': self.return_date is None
+            'return_date': self.return_date.isoformat() if self.return_date else None
         }
-
 
 with app.app_context():
     db.create_all()
@@ -84,194 +132,202 @@ def start():
     return "Chào mừng đến với Thư Viện!"
 
 """------------USER---------------"""
-@app.route('/api/users', methods=['POST'])
-def login():
-    """Tạo JWT khi đăng nhập thành công"""
-    data = request.get_json()
-    username = data.get('username', None)
-    password = data.get('password', None)
+@user_ns.route('/login')
+class Login(Resource):
+    @user_ns.doc(description='Lấy Access Token để sử dụng các API khác')
+    @user_ns.expect(login_model, validate=True)
+    @user_ns.response(200, 'Đăng nhập thành công', api.model('Token', {'access_token': fields.String()}))
+    @user_ns.response(401, 'Thông tin đăng nhập không hợp lệ')
+    def post(self):
+        """Tạo JWT khi đăng nhập thành công"""
+        data = self.api.payload
+        username = data.get('username')
+        password = data.get('password')
 
-    # 1. Kiểm tra người dùng (Trong thực tế, kiểm tra mật khẩu đã hash)
-    user = User.query.filter_by(username=username).first()
+        user = User.query.filter_by(username=username).first()
 
-    if user and password == '12345678':
-        # 2. Tạo access token. Identity (danh tính) thường là ID người dùng
-        access_token = create_access_token(identity=str(user.id))
-        # 3. Trả về token cho client
-        return jsonify(access_token=access_token), 200
-    else:
-        return jsonify({"msg": "Tên đăng nhập hoặc mật khẩu không đúng"}), 401
+        if user and password == user.password:
+            access_token = create_access_token(identity=str(user.id))
+            return {'access_token': access_token}, 200
+        else:
+            return {"msg": "Tên đăng nhập hoặc mật khẩu không đúng"}, 401
 
 """------------BOOK---------------"""
-@app.route('/api/books', methods=['POST'])
-@jwt_required()
-def create_book():
-    """Thêm sách mới (Create)"""
-    current_user_id = get_jwt_identity()
-    print(f"Người dùng ID {current_user_id} đang thêm sách.")
-
-    data = request.get_json()
-    if not data or not all(k in data for k in ('title', 'author', 'isbn')):
-        return jsonify({'message': 'Thiếu trường dữ liệu cần thiết (title, author, isbn)'}), 400
-
-    if Book.query.filter_by(isbn=data['isbn']).first():
-        return jsonify({'message': 'ISBN đã tồn tại.'}), 409
-
-    new_book = Book(
-        title=data['title'],
-        author=data['author'],
-        isbn=data['isbn']
+@book_ns.route('')
+class BookList(Resource):
+    @book_ns.doc(
+        security='jwt',
+        description='Lấy danh sách tất cả sách',
+        responses={200: 'Thành công'}
     )
-    try:
-        db.session.add(new_book)
-        # Vô hiệu hóa cache để cập nhật thêm sách
-        cache.clear()
-        db.session.commit()
-        return jsonify({'message': 'Thêm sách thành công', 'book': new_book.to_dict()}), 201
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'message': f'Lỗi DB: {e}'}), 500
+    @cache.cached(timeout=60)
+    def get(self):
+        """Lấy tất cả sách (Read All)"""
+        books = Book.query.all()
+        return [book.to_dict() for book in books], 200
 
+    @book_ns.doc(
+        security='jwt',
+        description='Thêm một cuốn sách mới',
+        responses={
+            201: 'Sách được tạo thành công',
+            400: 'Thiếu dữ liệu',
+            401: 'Chưa được xác thực',
+            409: 'ISBN đã tồn tại'
+        }
+    )
+    @book_ns.expect(book_model, validate=True) # Yêu cầu đầu vào phải theo book_model
+    @jwt_required()
+    def post(self):
+        """Thêm sách mới (Create)"""
+        current_user_id = get_jwt_identity()
+        data = self.api.payload # Lấy dữ liệu từ payload (body)
 
-@app.route('/api/books', methods=['GET'])
-@cache.cached(timeout=60)
-def get_all_books():
-    """Lấy tất cả sách (Read All)"""
-    books = Book.query.all()
-    return jsonify([book.to_dict() for book in books]), 200
+        if Book.query.filter_by(isbn=data['isbn']).first():
+            return {'message': 'ISBN đã tồn tại.'}, 409
 
+        new_book = Book(
+            title=data['title'],
+            author=data['author'],
+            isbn=data['isbn'],
+            copies=data.get('copies', 1) # Mặc định là 1 bản sao
+        )
+        try:
+            db.session.add(new_book)
+            cache.clear()
+            db.session.commit()
+            return {'message': 'Thêm sách thành công', 'book': new_book.to_dict()}, 201
+        except Exception as e:
+            db.session.rollback()
+            return {'message': f'Lỗi DB: {e}'}, 500
 
-@app.route('/api/books/<int:book_id>', methods=['GET'])
-@cache.cached(timeout=120)
-def get_book(book_id):
-    """Lấy thông tin sách theo ID (Read One)"""
-    book = Book.query.get(book_id)
-    if not book:
-        return jsonify({'message': 'Không tìm thấy sách.'}), 404
-    return jsonify(book.to_dict()), 200
+@book_ns.route('/<int:book_id>')
+@book_ns.param('book_id', 'Định danh của cuốn sách')
+class BookItem(Resource):
+    @book_ns.doc(description='Lấy thông tin sách theo ID')
+    @cache.cached(timeout=120)
+    def get(self, book_id):
+        """Lấy thông tin sách theo ID (Read One)"""
+        book = Book.query.get(book_id)
+        if not book:
+            return {'message': 'Không tìm thấy sách.'}, 404
+        return book.to_dict(), 200
 
+    @book_ns.doc(description='Cập nhật thông tin sách')
+    @book_ns.expect(book_model)
+    @jwt_required()
+    def put(self, book_id):
+        """Cập nhật thông tin sách (Update)"""
+        book = Book.query.get(book_id)
+        if not book:
+            return {'message': 'Không tìm thấy sách.'}, 404
 
-@app.route('/api/books/<int:book_id>', methods=['PUT'])
-def update_book(book_id):
-    """Cập nhật thông tin sách (Update)"""
-    current_user_id = get_jwt_identity()
-    print(f"Người dùng ID {current_user_id} đang cập nhật thông tin sách.")
+        data = self.api.payload
+        try:
+            # Chỉ cập nhật các trường được cung cấp trong payload
+            book.title = data.get('title', book.title)
+            book.author = data.get('author', book.author)
+            book.isbn = data.get('isbn', book.isbn)
+            book.copies = data.get('copies', book.copies)
 
-    book = Book.query.get(book_id)
-    if not book:
-        return jsonify({'message': 'Không tìm thấy sách.'}), 404
+            cache.clear()
+            db.session.commit()
+            return {'message': 'Cập nhật thành công', 'book': book.to_dict()}, 200
+        except Exception as e:
+            db.session.rollback()
+            return {'message': f'Lỗi khi cập nhật sách: {e}'}, 500
 
-    data = request.get_json()
-    try:
-        book.title = data.get('title', book.title)
-        book.author = data.get('author', book.author)
-        # Không cho phép cập nhật trạng thái qua endpoint này, chỉ qua giao dịch
-        cache.clear()
-        db.session.commit()
-        return jsonify({'message': 'Cập nhật thành công', 'book': book.to_dict()}), 200
-    except:
-        db.session.rollback()
-        return jsonify({'message': 'Lỗi khi cập nhật sách.'}), 500
+    @book_ns.doc(description='Xóa sách')
+    @jwt_required()
+    def delete(self, book_id):
+        """Xóa sách (Delete)"""
+        book = Book.query.get(book_id)
+        if not book:
+            return {'message': 'Không tìm thấy sách.'}, 404
 
+        if book.copies != Book.query.get(book_id).copies:
+             return {'message': 'Không thể xóa sách đang có giao dịch mượn.'}, 403
 
-@app.route('/api/books/<int:book_id>', methods=['DELETE'])
-def delete_book(book_id):
-    """Xóa sách (Delete)"""
-    current_user_id = get_jwt_identity()
-    print(f"Người dùng ID {current_user_id} đang xóa sách.")
-
-    book = Book.query.get(book_id)
-    if not book:
-        return jsonify({'message': 'Không tìm thấy sách.'}), 404
-
-    if book.status == 1:
-        return jsonify({'message': 'Không thể xóa sách đang được mượn.'}), 403
-
-    try:
-        db.session.delete(book)
-        cache.clear()
-        db.session.commit()
-        return jsonify({'message': 'Xóa sách thành công.'}), 200
-    except:
-        db.session.rollback()
-        return jsonify({'message': 'Lỗi khi xóa sách.'}), 500
+        try:
+            db.session.delete(book)
+            cache.clear()
+            db.session.commit()
+            return {'message': 'Xóa sách thành công.'}, 200
+        except Exception as e:
+            db.session.rollback()
+            return {'message': f'Lỗi khi xóa sách: {e}'}, 500
 
 """------------TRANSACTION---------------"""
-@app.route('/api/borrow', methods=['POST'])
-def borrow_book_api():
-    """Tạo giao dịch mượn sách"""
-    current_user_id = get_jwt_identity()
-    print(f"Người dùng ID {current_user_id} đang mượn sách.")
+@transaction_ns.route('/borrow')  # Dùng chung namespace với sách
+class BorrowBook(Resource):
+    @book_ns.doc(description='Tạo giao dịch mượn sách')
+    @book_ns.expect(transaction_model, validate=True)
+    @jwt_required()
+    def post(self):
+        """Tạo giao dịch mượn sách"""
+        data = self.api.payload
+        current_user_id = get_jwt_identity()
+        if not current_user_id:
+            return {'message': 'Không tìm thấy người mượn với ID này.'}, 404
 
-    data = request.get_json()
-    required_fields = ('book_id', 'borrower_name')
-    if not data or not all(k in data for k in required_fields):
-        return jsonify({'message': 'Thiếu book_id hoặc borrower_name.'}), 400
+        book = Book.query.get(data['book_id'])
+        if not book:
+            return {'message': 'Không tìm thấy sách với ID này.'}, 404
 
-    book = Book.query.get(data['book_id'])
-    if not book:
-        return jsonify({'message': 'Không tìm thấy sách với ID này.'}), 404
+        # Nếu không còn bản sao nào
+        if book.copies <= 0:
+            return {'message': 'Sách hiện đã được mượn hết.'}, 409
 
-    if book.status == 1:
-        return jsonify({'message': 'Sách hiện đang được mượn.'}), 409  # Conflict
+        # Tạo giao dịch mới
+        new_transaction = Transaction(
+            book_id=book.id,
+            user_id=int(current_user_id)
+        )
 
-    # Tạo giao dịch mới
-    new_transaction = Transaction(
-        book_id=book.id,
-        borrower_name=data['borrower_name']
-    )
+        try:
+            db.session.add(new_transaction)
+            book.copies = book.copies - 1
+            cache.clear()
+            db.session.commit()
+            return {'message': 'Mượn sách thành công', 'transaction': new_transaction.to_dict()}, 201
+        except Exception as e:
+            db.session.rollback()
+            return {'message': f'Lỗi khi mượn sách: {e}'}, 500
 
-    try:
-        db.session.add(new_transaction)
-        # Cập nhật trạng thái sách
-        book.status = 1
-        cache.clear()
-        db.session.commit()
-        return jsonify({'message': 'Mượn sách thành công', 'transaction': new_transaction.to_dict()}), 201
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'message': f'Lỗi khi mượn sách: {e}'}), 500
+@transaction_ns.route('/return/<int:book_id>')
+@transaction_ns.param('book_id', 'ID của cuốn sách được trả')
+class ReturnBook(Resource):
+    @book_ns.doc(description='Hoàn tất giao dịch (trả sách)')
+    @jwt_required()
+    def post(self, book_id):
+        """Hoàn tất giao dịch (trả sách)"""
+        current_user_id = get_jwt_identity()
+        user = User.query.get(int(current_user_id)) # Vì identity được lưu dưới dạng str
 
+        book = Book.query.get(book_id)
+        if not book:
+            return {'message': 'Không tìm thấy sách với ID này.'}, 404
 
-@app.route('/api/return/<int:book_id>', methods=['POST'])
-def return_book_api(book_id):
-    """Hoàn tất giao dịch (trả sách)"""
-    current_user_id = get_jwt_identity()
-    print(f"Người dùng ID {current_user_id} đang trả sách.")
+        # Tìm giao dịch MỞ cho cuốn sách này và người dùng này
+        transaction = Transaction.query.filter_by(
+            book_id=book_id,
+            user_id=int(current_user_id),  # <--- Dùng user_id để lọc
+            return_date=None
+        ).first()
 
-    book = Book.query.get(book_id)
-    if not book:
-        return jsonify({'message': 'Không tìm thấy sách với ID này.'}), 404
+        if not transaction:
+            return {'message': 'Không tìm thấy giao dịch mở cho sách này của bạn.'}, 404
 
-    if book.status == 0:
-        return jsonify({'message': 'Sách hiện đã sẵn có (chưa được mượn).'}), 409  # Conflict
+        try:
+            transaction.return_date = datetime.utcnow()
+            book.copies = book.copies + 1
 
-    # Tìm giao dịch MỞ (chưa có ngày trả) cho cuốn sách này
-    transaction = Transaction.query.filter_by(book_id=book_id, return_date=None).first()
-
-    if not transaction:
-        # Trường hợp hiếm khi DB bị lỗi trạng thái
-        return jsonify({'message': 'Không tìm thấy giao dịch mở cho sách này.'}), 404
-
-    try:
-        # 1. Cập nhật ngày trả
-        transaction.return_date = datetime.utcnow()
-        # 2. Cập nhật trạng thái sách
-        book.status = 0
-
-        cache.clear()
-        db.session.commit()
-        return jsonify({'message': 'Trả sách thành công', 'transaction': transaction.to_dict()}), 200
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'message': f'Lỗi khi trả sách: {e}'}), 500
-
-
-@app.route('/api/transactions/open', methods=['GET'])
-def get_open_transactions():
-    """Lấy danh sách các giao dịch đang mở (sách đang mượn)"""
-    open_transactions = Transaction.query.filter(Transaction.return_date == None).all()
-    return jsonify([t.to_dict() for t in open_transactions]), 200
+            cache.clear()
+            db.session.commit()
+            return {'message': 'Trả sách thành công', 'transaction': transaction.to_dict()}, 200
+        except Exception as e:
+            db.session.rollback()
+            return {'message': f'Lỗi khi trả sách: {e}'}, 500
 
 
 if __name__ == '__main__':
