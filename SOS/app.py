@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, JWTManager
+from flask_caching import Cache
 from datetime import datetime, timedelta
 
 # Khởi tạo ứng dụng Flask
@@ -13,8 +14,14 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config["JWT_SECRET_KEY"] = "SOS"
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(minutes=30)
 
+# Cấu hình Cache
+app.config['CACHE_TYPE'] = 'SimpleCache'
+    # Thời gian timeout tính theo giây
+app.config['CACHE_DEFAULT_TIMEOUT'] = 300
+
 db = SQLAlchemy(app)
 jwt = JWTManager(app)
+cache = Cache(app)
 
 class User(db.Model):
     """Mô hình người dùng đơn giản cho mục đích minh họa"""
@@ -77,7 +84,7 @@ def start():
     return "Chào mừng đến với Thư Viện!"
 
 """------------USER---------------"""
-@app.route('/api/login', methods=['POST'])
+@app.route('/api/users', methods=['POST'])
 def login():
     """Tạo JWT khi đăng nhập thành công"""
     data = request.get_json()
@@ -89,7 +96,7 @@ def login():
 
     if user and password == '12345678':
         # 2. Tạo access token. Identity (danh tính) thường là ID người dùng
-        access_token = create_access_token(identity=user.id)
+        access_token = create_access_token(identity=str(user.id))
         # 3. Trả về token cho client
         return jsonify(access_token=access_token), 200
     else:
@@ -117,6 +124,8 @@ def create_book():
     )
     try:
         db.session.add(new_book)
+        # Vô hiệu hóa cache để cập nhật thêm sách
+        cache.clear()
         db.session.commit()
         return jsonify({'message': 'Thêm sách thành công', 'book': new_book.to_dict()}), 201
     except Exception as e:
@@ -125,6 +134,7 @@ def create_book():
 
 
 @app.route('/api/books', methods=['GET'])
+@cache.cached(timeout=60)
 def get_all_books():
     """Lấy tất cả sách (Read All)"""
     books = Book.query.all()
@@ -132,6 +142,7 @@ def get_all_books():
 
 
 @app.route('/api/books/<int:book_id>', methods=['GET'])
+@cache.cached(timeout=120)
 def get_book(book_id):
     """Lấy thông tin sách theo ID (Read One)"""
     book = Book.query.get(book_id)
@@ -155,7 +166,7 @@ def update_book(book_id):
         book.title = data.get('title', book.title)
         book.author = data.get('author', book.author)
         # Không cho phép cập nhật trạng thái qua endpoint này, chỉ qua giao dịch
-
+        cache.clear()
         db.session.commit()
         return jsonify({'message': 'Cập nhật thành công', 'book': book.to_dict()}), 200
     except:
@@ -178,6 +189,7 @@ def delete_book(book_id):
 
     try:
         db.session.delete(book)
+        cache.clear()
         db.session.commit()
         return jsonify({'message': 'Xóa sách thành công.'}), 200
     except:
@@ -213,6 +225,7 @@ def borrow_book_api():
         db.session.add(new_transaction)
         # Cập nhật trạng thái sách
         book.status = 1
+        cache.clear()
         db.session.commit()
         return jsonify({'message': 'Mượn sách thành công', 'transaction': new_transaction.to_dict()}), 201
     except Exception as e:
@@ -246,6 +259,7 @@ def return_book_api(book_id):
         # 2. Cập nhật trạng thái sách
         book.status = 0
 
+        cache.clear()
         db.session.commit()
         return jsonify({'message': 'Trả sách thành công', 'transaction': transaction.to_dict()}), 200
     except Exception as e:
