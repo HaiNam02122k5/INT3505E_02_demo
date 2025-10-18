@@ -1,11 +1,10 @@
-from flask import Flask, request, jsonify
-from flask_sqlalchemy import SQLAlchemy
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, JWTManager
-from flask_restx import Api, Resource, fields
-from flask_caching import Cache
 from datetime import datetime, timedelta
 
-from sqlalchemy.orm import backref
+from flask import Flask
+from flask_caching import Cache
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, JWTManager
+from flask_restx import Api, Resource, fields
+from flask_sqlalchemy import SQLAlchemy
 
 # Khởi tạo ứng dụng Flask
 app = Flask(__name__)
@@ -258,6 +257,8 @@ class BookItem(Resource):
             return {'message': f'Lỗi khi xóa sách: {e}'}, 500
 
 """------------TRANSACTION---------------"""
+
+
 @transaction_ns.route('/borrow')  # Dùng chung namespace với sách
 class BorrowBook(Resource):
     @book_ns.doc(description='Tạo giao dịch mượn sách')
