@@ -1,10 +1,13 @@
 from datetime import datetime, timedelta
 
 from flask import Flask
-from flask_caching import Cache
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, JWTManager
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from flask_restx import Api, Resource, fields
-from flask_sqlalchemy import SQLAlchemy
+
+from models.user import User
+from models.book import Book
+from models.transaction import Transaction
+from SOS.extensions import jwt, db, cache
 
 # Khởi tạo ứng dụng Flask
 app = Flask(__name__)
@@ -68,63 +71,16 @@ transaction_model = api.model('Transaction', {
 '   return_date': fields.String(readonly=True, description='Return Date')
 })
 
-db = SQLAlchemy(app)
-jwt = JWTManager(app)
-cache = Cache(app)
-
-class User(db.Model):
-    """Mô hình người dùng đơn giản cho mục đích minh họa"""
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    password = db.Column(db.String(200), nullable=False)
-
-class Book(db.Model):
-    """Mô hình cho Sách"""
-    id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(100), nullable=False)
-    author = db.Column(db.String(100), nullable=False)
-    isbn = db.Column(db.String(20), unique=True, nullable=False)
-    copies = db.Column(db.Integer, nullable=False)
-
-    def to_dict(self):
-        """Chuyển đổi đối tượng Book sang dictionary để trả về JSON"""
-        return {
-            'id': self.id,
-            'title': self.title,
-            'author': self.author,
-            'isbn': self.isbn,
-            'copies': self.copies
-        }
-
-class Transaction(db.Model):
-    """Mô hình cho Giao dịch Mượn/Trả"""
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    book_id = db.Column(db.Integer, db.ForeignKey('book.id'), nullable=False)
-    borrow_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    return_date = db.Column(db.DateTime, nullable=True)  # None nếu chưa được trả
-
-    user = db.relationship('User', backref=db.backref('transactions', lazy=True))
-    book = db.relationship('Book', backref=db.backref('transactions', lazy=True))
-
-    def to_dict(self):
-        """Chuyển đổi đối tượng Transaction sang dictionary để trả về JSON"""
-        return {
-            'id': self.id,
-            'book_id': self.book_id,
-            'book_title': self.book.title,
-            'borrower_id': self.user_id,
-            'borrower_name': self.user.username,
-            'borrow_date': self.borrow_date.isoformat(),
-            'return_date': self.return_date.isoformat() if self.return_date else None
-        }
+db.init_app(app)
+jwt.init_app(app)
+cache.init_app(app)
 
 with app.app_context():
     db.create_all()
-    if not User.query.first():
-        admin_user = User(username='admin', password='12345678') # Mật khẩu Pr5_5
-        db.session.add(admin_user)
-        db.session.commit()
+    # if not User.query.first():
+    #     admin_user = User(username='admin', password='12345678') # Mật khẩu Pr5_5
+    #     db.session.add(admin_user)
+    #     db.session.commit()
 
 @app.route('/api/')
 def start():
@@ -257,8 +213,6 @@ class BookItem(Resource):
             return {'message': f'Lỗi khi xóa sách: {e}'}, 500
 
 """------------TRANSACTION---------------"""
-
-
 @transaction_ns.route('/borrow')  # Dùng chung namespace với sách
 class BorrowBook(Resource):
     @book_ns.doc(description='Tạo giao dịch mượn sách')
