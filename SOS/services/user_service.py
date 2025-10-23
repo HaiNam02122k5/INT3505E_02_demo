@@ -1,0 +1,27 @@
+from SOS.models.user import User
+from SOS.extensions import db
+from flask_jwt_extended import create_access_token
+
+
+class UserService:
+    @staticmethod
+    def authenticate(username, password):
+        """Xác thực người dùng"""
+        user = User.query.filter_by(username=username).first()
+
+        if user and password == user.password:
+            access_token = create_access_token(identity=str(user.id))
+            return {'access_token': access_token}, 200
+        else:
+            return {"msg": "Tên đăng nhập hoặc mật khẩu không đúng"}, 401
+
+    @staticmethod
+    def create_user(username, password):
+        """Tạo người dùng mới"""
+        if User.query.filter_by(username=username).first():
+            return {'message': 'Username đã tồn tại'}, 409
+
+        new_user = User(username=username, password=password)
+        db.session.add(new_user)
+        db.session.commit()
+        return {'message': 'Tạo user thành công', 'user': new_user.to_dict()}, 201

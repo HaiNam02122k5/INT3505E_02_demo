@@ -1,13 +1,12 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from flask import Flask
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask_restx import Api, Resource, fields
 
-from models.user import User
-from models.book import Book
-from models.transaction import Transaction
 from SOS.extensions import jwt, db, cache
+from SOS.services import BookService, UserService, TransactionService, MemberService
+from SOS.models import User
 
 # Khởi tạo ứng dụng Flask
 app = Flask(__name__)
@@ -48,6 +47,7 @@ api = Api(
 user_ns = api.namespace("Users", path="/api/users", description="CRUD operations for users")
 book_ns = api.namespace("Books", path="/api/books", description="CRUD operations for books")
 transaction_ns = api.namespace("Transactions", path="/api/transactions", description="CRUD operations for transactions")
+member_ns = api.namespace("Member", path="/api/members", description="CRUD operations for members")
 
 # --- Mô hình dữ liệu Swagger ---
 login_model = api.model('Login', {
@@ -57,18 +57,17 @@ login_model = api.model('Login', {
 
 book_model = api.model('Book', {
     'id': fields.Integer(readonly=True, description='Book ID'),
-    'title': fields.String(required=True, description='Book title'),
-    'author': fields.String(required=True, description='Book author'),
+    'title': fields.String(required=True, description='Tiêu đề'),
+    'author': fields.String(required=True, description='Tác giả'),
     'isbn': fields.String(description='Book ISBN'),
-    'copies': fields.Integer(description='Book copies')
+    'copies': fields.Integer(description='Số lượng')
 })
 
-transaction_model = api.model('Transaction', {
-    'id': fields.Integer(readonly=True, description='Transaction ID'),
-    'book_id': fields.Integer(readonly=True, description='Book ID'),
-    'borrower_id': fields.Integer(readonly=True, description='Borrower ID'),
-    'borrow_date': fields.String(readonly=True, description='Borrow Date'),
-'   return_date': fields.String(readonly=True, description='Return Date')
+member_model = api.model('Member', {
+    'id': fields.Integer(readonly=True, description='Member ID'),
+    'name': fields.String(required=True, description='Họ và tên'),
+    'phone_number': fields.String(required=True, description='Số điện thoại'),
+    'address': fields.String(required=True, description='Địa chỉ')
 })
 
 db.init_app(app)
@@ -77,18 +76,18 @@ cache.init_app(app)
 
 with app.app_context():
     db.create_all()
-    # if not User.query.first():
-    #     admin_user = User(username='admin', password='12345678') # Mật khẩu Pr5_5
-    #     db.session.add(admin_user)
-    #     db.session.commit()
+    if not User.query.first():
+        admin_user = User(username='admin', password='12345678')
+        db.session.add(admin_user)
+        db.session.commit()
 
 @app.route('/api/')
 def start():
     return "Chào mừng đến với Thư Viện!"
 
 """------------USER---------------"""
-@user_ns.route('/login')
-class Login(Resource):
+@user_ns.route('')
+class User(Resource):
     @user_ns.doc(description='Lấy Access Token để sử dụng các API khác')
     @user_ns.expect(login_model, validate=True)
     @user_ns.response(200, 'Đăng nhập thành công', api.model('Token', {'access_token': fields.String()}))
@@ -96,16 +95,60 @@ class Login(Resource):
     def post(self):
         """Tạo JWT khi đăng nhập thành công"""
         data = self.api.payload
-        username = data.get('username')
-        password = data.get('password')
+        return UserService.authenticate(data['username'], data['password'])
 
-        user = User.query.filter_by(username=username).first()
+"""------------MEMBER-------------"""
+@member_ns.route('')
+class MemberList(Resource):
+    @member_ns.doc(
+        security='jwt',
+        description='Lấy danh sách tất cả thành viên',
+        responses={200: 'Thành công'}
+    )
+    @cache.cached(timeout=60)
+    def get(self):
+        """Lấy tất cả thành viên (Read All)"""
+        return MemberService.get_all_members()
 
-        if user and password == user.password:
-            access_token = create_access_token(identity=str(user.id))
-            return {'access_token': access_token}, 200
-        else:
-            return {"msg": "Tên đăng nhập hoặc mật khẩu không đúng"}, 401
+    @member_ns.doc(
+        security='jwt',
+        description='Thêm một thành viên mới',
+        responses={
+            201: 'Thông tin được tạo thành công',
+            400: 'Thiếu dữ liệu',
+            401: 'Chưa được xác thực',
+            409: 'Số điện thoại đã tồn tại'
+        }
+    )
+    @member_ns.expect(member_model, validate=True)
+    @jwt_required()
+    def post(self):
+        """Thêm thành viên mới (Create)"""
+        data = self.api.payload
+        return MemberService.create_member(data)
+
+@member_ns.route('/<int:member_id>')
+@member_ns.param('member_id', 'Định danh thành viên')
+class MemberItem(Resource):
+    @member_ns.doc(description='Lấy thông tin thành viên theo ID')
+    @cache.cached(timeout=120)
+    def get(self, member_id):
+        """Lấy thông tin thành viên theo ID (Read One)"""
+        return MemberService.get_member_by_id(member_id)
+
+    @member_ns.doc(description='Cập nhật thông tin thành viên')
+    @member_ns.expect(member_model)
+    @jwt_required()
+    def put(self, member_id):
+        """Cập nhật thông tin thành viên (Update)"""
+        data = api.payload
+        return MemberService.update_member(member_id, data)
+
+    @member_ns.doc(description='Xóa thông tin thành viên')
+    @jwt_required()
+    def delete(self, member_id):
+        """Xóa thành viên (Delete)"""
+        return MemberService.delete_member(member_id)
 
 """------------BOOK---------------"""
 @book_ns.route('')
@@ -118,8 +161,7 @@ class BookList(Resource):
     @cache.cached(timeout=60)
     def get(self):
         """Lấy tất cả sách (Read All)"""
-        books = Book.query.all()
-        return [book.to_dict() for book in books], 200
+        return BookService.get_all_books()
 
     @book_ns.doc(
         security='jwt',
@@ -135,26 +177,8 @@ class BookList(Resource):
     @jwt_required()
     def post(self):
         """Thêm sách mới (Create)"""
-        current_user_id = get_jwt_identity()
-        data = self.api.payload # Lấy dữ liệu từ payload (body)
-
-        if Book.query.filter_by(isbn=data['isbn']).first():
-            return {'message': 'ISBN đã tồn tại.'}, 409
-
-        new_book = Book(
-            title=data['title'],
-            author=data['author'],
-            isbn=data['isbn'],
-            copies=data.get('copies', 1) # Mặc định là 1 bản sao
-        )
-        try:
-            db.session.add(new_book)
-            cache.clear()
-            db.session.commit()
-            return {'message': 'Thêm sách thành công', 'book': new_book.to_dict()}, 201
-        except Exception as e:
-            db.session.rollback()
-            return {'message': f'Lỗi DB: {e}'}, 500
+        data = self.api.payload
+        return BookService.create_book(data)
 
 @book_ns.route('/<int:book_id>')
 @book_ns.param('book_id', 'Định danh của cuốn sách')
@@ -163,126 +187,42 @@ class BookItem(Resource):
     @cache.cached(timeout=120)
     def get(self, book_id):
         """Lấy thông tin sách theo ID (Read One)"""
-        book = Book.query.get(book_id)
-        if not book:
-            return {'message': 'Không tìm thấy sách.'}, 404
-        return book.to_dict(), 200
+        return BookService.get_book_by_id(book_id)
 
     @book_ns.doc(description='Cập nhật thông tin sách')
     @book_ns.expect(book_model)
     @jwt_required()
     def put(self, book_id):
         """Cập nhật thông tin sách (Update)"""
-        book = Book.query.get(book_id)
-        if not book:
-            return {'message': 'Không tìm thấy sách.'}, 404
-
-        data = self.api.payload
-        try:
-            # Chỉ cập nhật các trường được cung cấp trong payload
-            book.title = data.get('title', book.title)
-            book.author = data.get('author', book.author)
-            book.isbn = data.get('isbn', book.isbn)
-            book.copies = data.get('copies', book.copies)
-
-            cache.clear()
-            db.session.commit()
-            return {'message': 'Cập nhật thành công', 'book': book.to_dict()}, 200
-        except Exception as e:
-            db.session.rollback()
-            return {'message': f'Lỗi khi cập nhật sách: {e}'}, 500
+        data = api.payload
+        return BookService.update_book(book_id, data)
 
     @book_ns.doc(description='Xóa sách')
     @jwt_required()
     def delete(self, book_id):
         """Xóa sách (Delete)"""
-        book = Book.query.get(book_id)
-        if not book:
-            return {'message': 'Không tìm thấy sách.'}, 404
-
-        if book.copies != Book.query.get(book_id).copies:
-             return {'message': 'Không thể xóa sách đang có giao dịch mượn.'}, 403
-
-        try:
-            db.session.delete(book)
-            cache.clear()
-            db.session.commit()
-            return {'message': 'Xóa sách thành công.'}, 200
-        except Exception as e:
-            db.session.rollback()
-            return {'message': f'Lỗi khi xóa sách: {e}'}, 500
+        return BookService.delete_book(book_id)
 
 """------------TRANSACTION---------------"""
-@transaction_ns.route('/borrow')  # Dùng chung namespace với sách
+@transaction_ns.route('/<int:member_id>/borrow/<int:book_id>')
+@transaction_ns.param('book_id', 'ID sách')
+@transaction_ns.param('member_id', 'ID thành viên')
 class BorrowBook(Resource):
     @book_ns.doc(description='Tạo giao dịch mượn sách')
-    @book_ns.expect(transaction_model, validate=True)
     @jwt_required()
-    def post(self):
+    def post(self, book_id, member_id):
         """Tạo giao dịch mượn sách"""
-        data = self.api.payload
-        current_user_id = get_jwt_identity()
-        if not current_user_id:
-            return {'message': 'Không tìm thấy người mượn với ID này.'}, 404
+        return TransactionService.borrow_book(book_id, member_id)
 
-        book = Book.query.get(data['book_id'])
-        if not book:
-            return {'message': 'Không tìm thấy sách với ID này.'}, 404
-
-        # Nếu không còn bản sao nào
-        if book.copies <= 0:
-            return {'message': 'Sách hiện đã được mượn hết.'}, 409
-
-        # Tạo giao dịch mới
-        new_transaction = Transaction(
-            book_id=book.id,
-            user_id=int(current_user_id)
-        )
-
-        try:
-            db.session.add(new_transaction)
-            book.copies = book.copies - 1
-            cache.clear()
-            db.session.commit()
-            return {'message': 'Mượn sách thành công', 'transaction': new_transaction.to_dict()}, 201
-        except Exception as e:
-            db.session.rollback()
-            return {'message': f'Lỗi khi mượn sách: {e}'}, 500
-
-@transaction_ns.route('/return/<int:book_id>')
+@transaction_ns.route('/<int:member_id>/return/<int:book_id>')
 @transaction_ns.param('book_id', 'ID của cuốn sách được trả')
+@transaction_ns.param('member_id', 'ID thành viên')
 class ReturnBook(Resource):
     @book_ns.doc(description='Hoàn tất giao dịch (trả sách)')
     @jwt_required()
-    def post(self, book_id):
+    def post(self, book_id, member_id):
         """Hoàn tất giao dịch (trả sách)"""
-        current_user_id = get_jwt_identity()
-        user = User.query.get(int(current_user_id)) # Vì identity được lưu dưới dạng str
-
-        book = Book.query.get(book_id)
-        if not book:
-            return {'message': 'Không tìm thấy sách với ID này.'}, 404
-
-        # Tìm giao dịch MỞ cho cuốn sách này và người dùng này
-        transaction = Transaction.query.filter_by(
-            book_id=book_id,
-            user_id=int(current_user_id),  # <--- Dùng user_id để lọc
-            return_date=None
-        ).first()
-
-        if not transaction:
-            return {'message': 'Không tìm thấy giao dịch mở cho sách này của bạn.'}, 404
-
-        try:
-            transaction.return_date = datetime.utcnow()
-            book.copies = book.copies + 1
-
-            cache.clear()
-            db.session.commit()
-            return {'message': 'Trả sách thành công', 'transaction': transaction.to_dict()}, 200
-        except Exception as e:
-            db.session.rollback()
-            return {'message': f'Lỗi khi trả sách: {e}'}, 500
+        return TransactionService.return_book(book_id, member_id)
 
 
 if __name__ == '__main__':
