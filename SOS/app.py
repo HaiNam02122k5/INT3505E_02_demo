@@ -1,12 +1,12 @@
 from datetime import timedelta
 
 from flask import Flask
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required
 from flask_restx import Api, Resource, fields
 
 from SOS.extensions import jwt, db, cache
-from SOS.services import BookService, UserService, TransactionService, MemberService
 from SOS.models import User
+from SOS.services import BookService, UserService, TransactionService, MemberService
 
 # Khởi tạo ứng dụng Flask
 app = Flask(__name__)
@@ -46,7 +46,7 @@ api = Api(
 
 user_ns = api.namespace("Users", path="/api/users", description="CRUD operations for users")
 book_ns = api.namespace("Books", path="/api/books", description="CRUD operations for books")
-transaction_ns = api.namespace("Transactions", path="/api/transactions", description="CRUD operations for transactions")
+transaction_ns = api.namespace("Transactions", path="/api/<int:member_id>/transactions", description="CRUD operations for transactions")
 member_ns = api.namespace("Member", path="/api/members", description="CRUD operations for members")
 
 # --- Mô hình dữ liệu Swagger ---
@@ -204,23 +204,19 @@ class BookItem(Resource):
         return BookService.delete_book(book_id)
 
 """------------TRANSACTION---------------"""
-@transaction_ns.route('/<int:member_id>/borrow/<int:book_id>')
+@transaction_ns.route('/<int:book_id>')
 @transaction_ns.param('book_id', 'ID sách')
 @transaction_ns.param('member_id', 'ID thành viên')
-class BorrowBook(Resource):
+class Transaction_User(Resource):
     @book_ns.doc(description='Tạo giao dịch mượn sách')
     @jwt_required()
     def post(self, book_id, member_id):
         """Tạo giao dịch mượn sách"""
         return TransactionService.borrow_book(book_id, member_id)
 
-@transaction_ns.route('/<int:member_id>/return/<int:book_id>')
-@transaction_ns.param('book_id', 'ID của cuốn sách được trả')
-@transaction_ns.param('member_id', 'ID thành viên')
-class ReturnBook(Resource):
     @book_ns.doc(description='Hoàn tất giao dịch (trả sách)')
     @jwt_required()
-    def post(self, book_id, member_id):
+    def delete(self, book_id, member_id):
         """Hoàn tất giao dịch (trả sách)"""
         return TransactionService.return_book(book_id, member_id)
 
