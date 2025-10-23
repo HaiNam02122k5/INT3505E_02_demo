@@ -7,71 +7,52 @@ from SOS.extensions import jwt, db, cache
 from SOS.models import User
 from SOS.schemas import init_schemas
 from SOS.routes import init_member_routes, init_transaction_routes, init_book_routes, init_user_routes
+from SOS.config import Config
 
-# Khởi tạo ứng dụng Flask
-app = Flask(__name__)
 
-# Cấu hình cơ sở dữ liệu SQLite
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///library.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+def create_app():
+    # Khởi tạo ứng dụng Flask
+    app = Flask(__name__)
 
-# Cấu hình JWT
-app.config["JWT_SECRET_KEY"] = "SOS"
-app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(minutes=30)
+    app.config.from_object(Config)
 
-# Cấu hình Cache
-app.config['CACHE_TYPE'] = 'SimpleCache'
-    # Thời gian timeout tính theo giây
-app.config['CACHE_DEFAULT_TIMEOUT'] = 300
+    api = Api(
+        app,
+        version="1.0",
+        title="Book Management API",
+        description="Tài liệu API tự động sinh bằng Flask-RESTX",
+        doc="/docs/",
+        security='jwt', # Mặc định bảo vệ tất cả endpoint
+        authorizations=Config.AUTHORIZATIONS # Định nghĩa cách thức bảo vệ
+    )
 
-# Cấu hình Swagger tự động
-authorizations = {
-    'jwt': {
-        'type': 'apiKey',
-        'in': 'header',
-        'name': 'Authorization',
-        'description': "Type in the *'Value'* input field: **Bearer <JWT>**, where JWT is the access token"
-    }
-}
+    user_ns = api.namespace("Users", path="/api/users", description="CRUD operations for users")
+    book_ns = api.namespace("Books", path="/api/books", description="CRUD operations for books")
+    transaction_ns = api.namespace("Transactions", path="/api", description="CRUD operations for transactions")
+    member_ns = api.namespace("Member", path="/api/members", description="CRUD operations for members")
 
-api = Api(
-    app,
-    version="1.0",
-    title="Book Management API",
-    description="Tài liệu API tự động sinh bằng Flask-RESTX",
-    doc="/docs/",
-    security='jwt', # Mặc định bảo vệ tất cả endpoint
-    authorizations=authorizations # Định nghĩa cách thức bảo vệ
-)
+    db.init_app(app)
+    jwt.init_app(app)
+    cache.init_app(app)
 
-user_ns = api.namespace("Users", path="/api/users", description="CRUD operations for users")
-book_ns = api.namespace("Books", path="/api/books", description="CRUD operations for books")
-transaction_ns = api.namespace("Transactions", path="/api", description="CRUD operations for transactions")
-member_ns = api.namespace("Member", path="/api/members", description="CRUD operations for members")
+    # Khởi tạo schemas
+    schemas = init_schemas(api)
 
-db.init_app(app)
-jwt.init_app(app)
-cache.init_app(app)
+    # Khởi tạo route
+    init_user_routes(api, user_ns, schemas)
+    init_member_routes(api, member_ns, schemas)
+    init_book_routes(api, book_ns, schemas)
+    init_transaction_routes(transaction_ns)
 
-# Khởi tạo schemas
-schemas = init_schemas(api)
+    with app.app_context():
+        db.create_all()
 
-# Khởi tạo route
-init_user_routes(api, user_ns, schemas)
-init_member_routes(api, member_ns, schemas)
-init_book_routes(api, book_ns, schemas)
-init_transaction_routes(transaction_ns)
+    @app.route('/api/')
+    def start():
+        return "Chào mừng đến với Thư Viện!"
 
-with app.app_context():
-    db.create_all()
-    if not User.query.first():
-        admin_user = User(username='admin', password='12345678')
-        db.session.add(admin_user)
-        db.session.commit()
-
-@app.route('/api/')
-def start():
-    return "Chào mừng đến với Thư Viện!"
+    return app
 
 if __name__ == '__main__':
+    app = create_app()
     app.run(debug=True)
