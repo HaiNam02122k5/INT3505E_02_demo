@@ -8,6 +8,7 @@ class Config:
     # JWT
     JWT_SECRET_KEY = "SOS"
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(minutes=30)
+    JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=1)
 
     # Cache
     CACHE_TYPE = 'SimpleCache'

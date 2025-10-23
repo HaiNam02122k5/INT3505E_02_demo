@@ -1,7 +1,6 @@
 from SOS.models.user import User
 from SOS.extensions import db
-from flask_jwt_extended import create_access_token
-
+from flask_jwt_extended import create_access_token, create_refresh_token
 
 class UserService:
     @staticmethod
@@ -11,9 +10,19 @@ class UserService:
 
         if user and password == user.password:
             access_token = create_access_token(identity=str(user.id))
-            return {'access_token': access_token}, 200
+            refresh_token = create_refresh_token(identity=str(user.id))
+            return {
+                'access_token': access_token,
+                'refresh_token': refresh_token
+            }, 200
         else:
             return {"msg": "Tên đăng nhập hoặc mật khẩu không đúng"}, 401
+
+    @staticmethod
+    def refresh_access_token(user_id):
+        """Tạo access token mới từ refresh token"""
+        new_access_token = create_access_token(identity=user_id)
+        return {'access_token': new_access_token}, 200
 
     @staticmethod
     def create_user(username, password):
