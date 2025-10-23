@@ -2,10 +2,17 @@ from datetime import datetime
 
 from SOS.extensions import db, cache
 from SOS.models.book import Book
+from SOS.models.member import Member
 from SOS.models.transaction import Transaction
 
 
 class TransactionService:
+    @staticmethod
+    def get_transactions_by_member_id(member_id):
+        transactions = Transaction.query.filter_by(member_id=member_id).all()
+        return [transaction.to_dict() for transaction in transactions]
+
+
     @staticmethod
     def borrow_book(book_id, member_id, borrow_date=None):
         """Mượn sách"""
@@ -15,6 +22,10 @@ class TransactionService:
 
         if book.copies <= 0:
             return {'message': 'Sách hiện đã được mượn hết.'}, 409
+
+        member = Member.query.get(member_id)
+        if not member:
+            return {'message': f'Không tìm thấy thành viên có ID {member_id}'}, 404
 
         new_transaction = Transaction(
             book_id=book.id,
