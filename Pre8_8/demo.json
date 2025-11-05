@@ -1,0 +1,512 @@
+{
+  "swagger": "2.0",
+  "basePath": "/",
+  "paths": {
+    "/api/books": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          }
+        },
+        "summary": "Lấy tất cả sách (Read All)",
+        "description": "Lấy danh sách tất cả sách",
+        "operationId": "get_book_list",
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "tags": [
+          "Books"
+        ]
+      },
+      "post": {
+        "responses": {
+          "201": {
+            "description": "Sách được tạo thành công"
+          },
+          "400": {
+            "description": "Thiếu dữ liệu"
+          },
+          "401": {
+            "description": "Chưa được xác thực"
+          },
+          "409": {
+            "description": "ISBN đã tồn tại"
+          }
+        },
+        "summary": "Thêm sách mới (Create)",
+        "description": "Thêm một cuốn sách mới",
+        "operationId": "post_book_list",
+        "parameters": [
+          {
+            "name": "payload",
+            "required": true,
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/Book"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "tags": [
+          "Books"
+        ]
+      }
+    },
+    "/api/books/{book_id}": {
+      "parameters": [
+        {
+          "in": "path",
+          "description": "Định danh của cuốn sách",
+          "name": "book_id",
+          "required": true,
+          "type": "integer"
+        }
+      ],
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "summary": "Lấy thông tin sách theo ID (Read One)",
+        "description": "Lấy thông tin sách theo ID",
+        "operationId": "get_book_item",
+        "tags": [
+          "Books"
+        ]
+      },
+      "put": {
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "summary": "Cập nhật thông tin sách (Update)",
+        "description": "Cập nhật thông tin sách",
+        "operationId": "put_book_item",
+        "parameters": [
+          {
+            "name": "payload",
+            "required": true,
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/Book"
+            }
+          }
+        ],
+        "tags": [
+          "Books"
+        ]
+      },
+      "delete": {
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "summary": "Xóa sách (Delete)",
+        "description": "Xóa sách",
+        "operationId": "delete_book_item",
+        "tags": [
+          "Books"
+        ]
+      }
+    },
+    "/api/members": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          }
+        },
+        "summary": "Lấy tất cả thành viên (Read All)",
+        "description": "Lấy danh sách tất cả thành viên",
+        "operationId": "get_member_list",
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "tags": [
+          "Member"
+        ]
+      },
+      "post": {
+        "responses": {
+          "201": {
+            "description": "Thông tin được tạo thành công"
+          },
+          "400": {
+            "description": "Thiếu dữ liệu"
+          },
+          "401": {
+            "description": "Chưa được xác thực"
+          },
+          "409": {
+            "description": "Số điện thoại đã tồn tại"
+          }
+        },
+        "summary": "Thêm thành viên mới (Create)",
+        "description": "Thêm một thành viên mới",
+        "operationId": "post_member_list",
+        "parameters": [
+          {
+            "name": "payload",
+            "required": true,
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/Member"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "tags": [
+          "Member"
+        ]
+      }
+    },
+    "/api/members/{member_id}": {
+      "parameters": [
+        {
+          "in": "path",
+          "description": "Định danh thành viên",
+          "name": "member_id",
+          "required": true,
+          "type": "integer"
+        }
+      ],
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "summary": "Lấy thông tin thành viên theo ID (Read One)",
+        "description": "Lấy thông tin thành viên theo ID",
+        "operationId": "get_member_item",
+        "tags": [
+          "Member"
+        ]
+      },
+      "put": {
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "summary": "Cập nhật thông tin thành viên (Update)",
+        "description": "Cập nhật thông tin thành viên",
+        "operationId": "put_member_item",
+        "parameters": [
+          {
+            "name": "payload",
+            "required": true,
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/Member"
+            }
+          }
+        ],
+        "tags": [
+          "Member"
+        ]
+      },
+      "delete": {
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "summary": "Xóa thành viên (Delete)",
+        "description": "Xóa thông tin thành viên",
+        "operationId": "delete_member_item",
+        "tags": [
+          "Member"
+        ]
+      }
+    },
+    "/api/members/{member_id}/transactions": {
+      "parameters": [
+        {
+          "in": "path",
+          "description": "ID thành viên",
+          "name": "member_id",
+          "required": true,
+          "type": "integer"
+        }
+      ],
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "description": "Lấy tất cả giao dịch của 1 thành viên",
+        "operationId": "get_member_transaction",
+        "tags": [
+          "Transactions"
+        ]
+      }
+    },
+    "/api/members/{member_id}/transactions/{book_id}": {
+      "parameters": [
+        {
+          "in": "path",
+          "description": "ID thành viên",
+          "name": "member_id",
+          "required": true,
+          "type": "integer"
+        },
+        {
+          "in": "path",
+          "description": "ID sách",
+          "name": "book_id",
+          "required": true,
+          "type": "integer"
+        }
+      ],
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "summary": "Tạo giao dịch mượn sách",
+        "description": "Tạo giao dịch mượn sách",
+        "operationId": "post_transaction",
+        "tags": [
+          "Transactions"
+        ]
+      },
+      "delete": {
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "summary": "Hoàn tất giao dịch (trả sách)",
+        "description": "Hoàn tất giao dịch (trả sách)",
+        "operationId": "delete_transaction",
+        "tags": [
+          "Transactions"
+        ]
+      }
+    },
+    "/api/users": {
+      "post": {
+        "responses": {
+          "401": {
+            "description": "Thông tin đăng nhập không hợp lệ"
+          },
+          "200": {
+            "description": "Đăng nhập thành công",
+            "schema": {
+              "$ref": "#/definitions/Token"
+            }
+          }
+        },
+        "summary": "Tạo JWT khi đăng nhập thành công",
+        "description": "Lấy Access Token để sử dụng các API khác",
+        "operationId": "post_user",
+        "parameters": [
+          {
+            "name": "payload",
+            "required": true,
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/Login"
+            }
+          }
+        ],
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/api/users/refresh": {
+      "post": {
+        "responses": {
+          "401": {
+            "description": "Refresh token không hợp lệ hoặc hết hạn"
+          },
+          "200": {
+            "description": "Token mới được tạo thành công",
+            "schema": {
+              "$ref": "#/definitions/NewToken"
+            }
+          }
+        },
+        "summary": "Làm mới access token",
+        "description": "Làm mới Access Token bằng Refresh Token",
+        "operationId": "post_refresh_token",
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "tags": [
+          "Users"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Book Management API",
+    "version": "1.0",
+    "description": "Tài liệu API tự động sinh bằng Flask-RESTX"
+  },
+  "produces": [
+    "application/json"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "securityDefinitions": {
+    "jwt": {
+      "type": "apiKey",
+      "in": "header",
+      "name": "Authorization",
+      "description": "Type in the *'Value'* input field: **Bearer \u003CJWT\u003E**, where JWT is the access token"
+    }
+  },
+  "security": [
+    {
+      "jwt": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Users",
+      "description": "CRUD operations for users"
+    },
+    {
+      "name": "Books",
+      "description": "CRUD operations for books"
+    },
+    {
+      "name": "Transactions",
+      "description": "CRUD operations for transactions"
+    },
+    {
+      "name": "Member",
+      "description": "CRUD operations for members"
+    }
+  ],
+  "definitions": {
+    "Login": {
+      "required": [
+        "password",
+        "username"
+      ],
+      "properties": {
+        "username": {
+          "type": "string",
+          "description": "Tên đăng nhập"
+        },
+        "password": {
+          "type": "string",
+          "description": "Mật khẩu"
+        }
+      },
+      "type": "object"
+    },
+    "Token": {
+      "properties": {
+        "access_token": {
+          "type": "string",
+          "description": "JWT Access Token"
+        },
+        "refresh_token": {
+          "type": "string",
+          "description": "JWT Refresh Token"
+        }
+      },
+      "type": "object"
+    },
+    "NewToken": {
+      "properties": {
+        "access_token": {
+          "type": "string",
+          "description": "Access token mới"
+        }
+      },
+      "type": "object"
+    },
+    "Book": {
+      "required": [
+        "author",
+        "title"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Book ID",
+          "readOnly": true
+        },
+        "title": {
+          "type": "string",
+          "description": "Tiêu đề"
+        },
+        "author": {
+          "type": "string",
+          "description": "Tác giả"
+        },
+        "isbn": {
+          "type": "string",
+          "description": "Book ISBN"
+        },
+        "copies": {
+          "type": "integer",
+          "description": "Số lượng"
+        }
+      },
+      "type": "object"
+    },
+    "Member": {
+      "required": [
+        "address",
+        "name",
+        "phone_number"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Member ID",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "description": "Họ và tên"
+        },
+        "phone_number": {
+          "type": "string",
+          "description": "Số điện thoại"
+        },
+        "address": {
+          "type": "string",
+          "description": "Địa chỉ"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "responses": {
+    "ParseError": {
+      "description": "When a mask can't be parsed"
+    },
+    "MaskError": {
+      "description": "When any error occurs on mask"
+    }
+  }
+}

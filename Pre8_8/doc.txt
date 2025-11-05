@@ -1,0 +1,7 @@
+# Tải file JAR
+ wget https://repo1.maven.org/maven2/io/swagger/codegen/v3/swagger-codegen-cli/3.0.52/swagger-codegen-cli-3.0.52.jar -O swagger-codegen-cli.jar
+# Sinh code flask-python
+java -jar swagger-codegen-cli.jar generate -i demo.json -l python-flask -o ./book-management-api
+# Cài đặt requirements
+pip install -r requirements.txt
+

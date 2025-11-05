@@ -1,0 +1,456 @@
+openapi: 3.0.1
+info:
+  title: Book Management API
+  description: Tài liệu API tự động sinh bằng Flask-RESTX
+  version: "1.0"
+servers:
+- url: /
+security:
+- jwt: []
+tags:
+- name: Users
+  description: CRUD operations for users
+- name: Books
+  description: CRUD operations for books
+- name: Transactions
+  description: CRUD operations for transactions
+- name: Member
+  description: CRUD operations for members
+paths:
+  /api/books:
+    get:
+      tags:
+      - Books
+      summary: Lấy tất cả sách (Read All)
+      description: Lấy danh sách tất cả sách
+      operationId: get_book_list
+      responses:
+        "200":
+          description: Thành công
+          content: {}
+      security:
+      - jwt: []
+      x-openapi-router-controller: swagger_server.controllers.books_controller
+    post:
+      tags:
+      - Books
+      summary: Thêm sách mới (Create)
+      description: Thêm một cuốn sách mới
+      operationId: post_book_list
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Book'
+        required: true
+      responses:
+        "201":
+          description: Sách được tạo thành công
+          content: {}
+        "400":
+          description: Thiếu dữ liệu
+          content: {}
+        "401":
+          description: Chưa được xác thực
+          content: {}
+        "409":
+          description: ISBN đã tồn tại
+          content: {}
+      security:
+      - jwt: []
+      x-codegen-request-body-name: payload
+      x-openapi-router-controller: swagger_server.controllers.books_controller
+  /api/books/{book_id}:
+    get:
+      tags:
+      - Books
+      summary: Lấy thông tin sách theo ID (Read One)
+      description: Lấy thông tin sách theo ID
+      operationId: get_book_item
+      parameters:
+      - name: book_id
+        in: path
+        description: Định danh của cuốn sách
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+      responses:
+        "200":
+          description: Success
+          content: {}
+      x-openapi-router-controller: swagger_server.controllers.books_controller
+    put:
+      tags:
+      - Books
+      summary: Cập nhật thông tin sách (Update)
+      description: Cập nhật thông tin sách
+      operationId: put_book_item
+      parameters:
+      - name: book_id
+        in: path
+        description: Định danh của cuốn sách
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Book'
+        required: true
+      responses:
+        "200":
+          description: Success
+          content: {}
+      x-codegen-request-body-name: payload
+      x-openapi-router-controller: swagger_server.controllers.books_controller
+    delete:
+      tags:
+      - Books
+      summary: Xóa sách (Delete)
+      description: Xóa sách
+      operationId: delete_book_item
+      parameters:
+      - name: book_id
+        in: path
+        description: Định danh của cuốn sách
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+      responses:
+        "200":
+          description: Success
+          content: {}
+      x-openapi-router-controller: swagger_server.controllers.books_controller
+  /api/members:
+    get:
+      tags:
+      - Member
+      summary: Lấy tất cả thành viên (Read All)
+      description: Lấy danh sách tất cả thành viên
+      operationId: get_member_list
+      responses:
+        "200":
+          description: Thành công
+          content: {}
+      security:
+      - jwt: []
+      x-openapi-router-controller: swagger_server.controllers.member_controller
+    post:
+      tags:
+      - Member
+      summary: Thêm thành viên mới (Create)
+      description: Thêm một thành viên mới
+      operationId: post_member_list
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Member'
+        required: true
+      responses:
+        "201":
+          description: Thông tin được tạo thành công
+          content: {}
+        "400":
+          description: Thiếu dữ liệu
+          content: {}
+        "401":
+          description: Chưa được xác thực
+          content: {}
+        "409":
+          description: Số điện thoại đã tồn tại
+          content: {}
+      security:
+      - jwt: []
+      x-codegen-request-body-name: payload
+      x-openapi-router-controller: swagger_server.controllers.member_controller
+  /api/members/{member_id}:
+    get:
+      tags:
+      - Member
+      summary: Lấy thông tin thành viên theo ID (Read One)
+      description: Lấy thông tin thành viên theo ID
+      operationId: get_member_item
+      parameters:
+      - name: member_id
+        in: path
+        description: Định danh thành viên
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+      responses:
+        "200":
+          description: Success
+          content: {}
+      x-openapi-router-controller: swagger_server.controllers.member_controller
+    put:
+      tags:
+      - Member
+      summary: Cập nhật thông tin thành viên (Update)
+      description: Cập nhật thông tin thành viên
+      operationId: put_member_item
+      parameters:
+      - name: member_id
+        in: path
+        description: Định danh thành viên
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Member'
+        required: true
+      responses:
+        "200":
+          description: Success
+          content: {}
+      x-codegen-request-body-name: payload
+      x-openapi-router-controller: swagger_server.controllers.member_controller
+    delete:
+      tags:
+      - Member
+      summary: Xóa thành viên (Delete)
+      description: Xóa thông tin thành viên
+      operationId: delete_member_item
+      parameters:
+      - name: member_id
+        in: path
+        description: Định danh thành viên
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+      responses:
+        "200":
+          description: Success
+          content: {}
+      x-openapi-router-controller: swagger_server.controllers.member_controller
+  /api/members/{member_id}/transactions:
+    get:
+      tags:
+      - Transactions
+      description: Lấy tất cả giao dịch của 1 thành viên
+      operationId: get_member_transaction
+      parameters:
+      - name: member_id
+        in: path
+        description: ID thành viên
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+      responses:
+        "200":
+          description: Success
+          content: {}
+      x-openapi-router-controller: swagger_server.controllers.transactions_controller
+  /api/members/{member_id}/transactions/{book_id}:
+    post:
+      tags:
+      - Transactions
+      summary: Tạo giao dịch mượn sách
+      description: Tạo giao dịch mượn sách
+      operationId: post_transaction
+      parameters:
+      - name: member_id
+        in: path
+        description: ID thành viên
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+      - name: book_id
+        in: path
+        description: ID sách
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+      responses:
+        "200":
+          description: Success
+          content: {}
+      x-openapi-router-controller: swagger_server.controllers.transactions_controller
+    delete:
+      tags:
+      - Transactions
+      summary: Hoàn tất giao dịch (trả sách)
+      description: Hoàn tất giao dịch (trả sách)
+      operationId: delete_transaction
+      parameters:
+      - name: member_id
+        in: path
+        description: ID thành viên
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+      - name: book_id
+        in: path
+        description: ID sách
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+      responses:
+        "200":
+          description: Success
+          content: {}
+      x-openapi-router-controller: swagger_server.controllers.transactions_controller
+  /api/users:
+    post:
+      tags:
+      - Users
+      summary: Tạo JWT khi đăng nhập thành công
+      description: Lấy Access Token để sử dụng các API khác
+      operationId: post_user
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Login'
+        required: true
+      responses:
+        "401":
+          description: Thông tin đăng nhập không hợp lệ
+          content: {}
+        "200":
+          description: Đăng nhập thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Token'
+      x-codegen-request-body-name: payload
+      x-openapi-router-controller: swagger_server.controllers.users_controller
+  /api/users/refresh:
+    post:
+      tags:
+      - Users
+      summary: Làm mới access token
+      description: Làm mới Access Token bằng Refresh Token
+      operationId: post_refresh_token
+      responses:
+        "401":
+          description: Refresh token không hợp lệ hoặc hết hạn
+          content: {}
+        "200":
+          description: Token mới được tạo thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NewToken'
+      security:
+      - jwt: []
+      x-openapi-router-controller: swagger_server.controllers.users_controller
+components:
+  schemas:
+    Login:
+      required:
+      - password
+      - username
+      type: object
+      properties:
+        username:
+          type: string
+          description: Tên đăng nhập
+        password:
+          type: string
+          description: Mật khẩu
+    Token:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: JWT Access Token
+        refresh_token:
+          type: string
+          description: JWT Refresh Token
+      example:
+        access_token: access_token
+        refresh_token: refresh_token
+    NewToken:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: Access token mới
+      example:
+        access_token: access_token
+    Book:
+      required:
+      - author
+      - title
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Book ID
+          readOnly: true
+        title:
+          type: string
+          description: Tiêu đề
+        author:
+          type: string
+          description: Tác giả
+        isbn:
+          type: string
+          description: Book ISBN
+        copies:
+          type: integer
+          description: Số lượng
+    Member:
+      required:
+      - address
+      - name
+      - phone_number
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Member ID
+          readOnly: true
+        name:
+          type: string
+          description: Họ và tên
+        phone_number:
+          type: string
+          description: Số điện thoại
+        address:
+          type: string
+          description: Địa chỉ
+  responses:
+    ParseError:
+      description: When a mask can't be parsed
+      content: {}
+    MaskError:
+      description: When any error occurs on mask
+      content: {}
+  securitySchemes:
+    jwt:
+      type: apiKey
+      description: "Type in the *'Value'* input field: **Bearer <JWT>**, where JWT\
+        \ is the access token"
+      name: Authorization
+      in: header
+      x-apikeyInfoFunc: swagger_server.controllers.authorization_controller.check_jwt
+x-original-swagger-version: "2.0"
+
