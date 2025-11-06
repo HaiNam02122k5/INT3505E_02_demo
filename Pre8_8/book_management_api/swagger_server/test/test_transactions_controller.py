@@ -9,7 +9,7 @@ from swagger_server.test import BaseTestCase
 
 
 class TestTransactionsController(BaseTestCase):
-    """TransactionsController integration test stubs"""
+    """TransactionsController integration tests stubs"""
 
     def test_delete_transaction(self):
         """Test case for delete_transaction

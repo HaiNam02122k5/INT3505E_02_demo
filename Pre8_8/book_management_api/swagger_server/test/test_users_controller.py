@@ -12,7 +12,7 @@ from swagger_server.test import BaseTestCase
 
 
 class TestUsersController(BaseTestCase):
-    """UsersController integration test stubs"""
+    """UsersController integration tests stubs"""
 
     def test_post_refresh_token(self):
         """Test case for post_refresh_token

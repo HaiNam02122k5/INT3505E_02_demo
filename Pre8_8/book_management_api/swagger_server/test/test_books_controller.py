@@ -10,7 +10,7 @@ from swagger_server.test import BaseTestCase
 
 
 class TestBooksController(BaseTestCase):
-    """BooksController integration test stubs"""
+    """BooksController integration tests stubs"""
 
     def test_delete_book_item(self):
         """Test case for delete_book_item

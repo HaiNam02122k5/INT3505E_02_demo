@@ -33,4 +33,4 @@ class UserService:
         new_user = User(username=username, password=password)
         db.session.add(new_user)
         db.session.commit()
-        return {'message': 'Tạo user thành công', 'user': new_user.to_dict()}, 201
+        return {'message': 'Tạo user thành công'}, 201

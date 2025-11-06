@@ -10,7 +10,7 @@ from swagger_server.test import BaseTestCase
 
 
 class TestMemberController(BaseTestCase):
-    """MemberController integration test stubs"""
+    """MemberController integration tests stubs"""
 
     def test_delete_member_item(self):
         """Test case for delete_member_item

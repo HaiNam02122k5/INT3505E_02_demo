@@ -1,0 +1,4 @@
+pip install pytest pytest-cov pytest-mock pytest-xdist flask-testing locust faker
+
+
+pip install -r requirements-test.txt
