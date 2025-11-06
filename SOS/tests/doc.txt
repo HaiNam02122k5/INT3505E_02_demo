@@ -2,3 +2,17 @@ pip install pytest pytest-cov pytest-mock pytest-xdist flask-testing locust fake
 
 
 pip install -r requirements-test.txt
+
+# Tất cả tests
+pytest tests/ -v
+
+# Chỉ unit tests
+pytest tests/unit -v
+
+# Với coverage
+pytest tests/ --cov=SOS --cov-report=html
+
+# Performance với Locust
+locust -f tests/performance/locustfile.py --host=http://localhost:5000
+
+newman run Test_Suite_API.postman_collection.json -e Lib_API_Env.postman_environment.json
