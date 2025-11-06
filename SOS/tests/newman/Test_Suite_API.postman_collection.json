@@ -1,38 +1,139 @@
 {
 	"info": {
 		"_postman_id": "64d5ab94-8e9c-414f-bdde-b5188d621319",
-		"name": "[Test Suite] API",
+		"name": "Test_Suite_API",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "48537068",
 		"_collection_link": "https://nhnam200512-4089382.postman.co/workspace/c658eb44-109f-4ecf-8b2f-5ff0838f3226/collection/48537068-64d5ab94-8e9c-414f-bdde-b5188d621319?action=share&source=collection_link&creator=48537068"
 	},
 	"item": [
 		{
-			"name": "get_all_book",
-			"request": {
-				"method": "GET",
-				"header": []
-			},
-			"response": []
-		},
-		{
 			"name": "login",
-			"request": {
-				"method": "GET",
-				"header": []
-			},
-			"response": []
-		},
-		{
-			"name": "Loan Book",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// 1. Lấy dữ liệu JSON từ response\r",
+							"var jsonData = pm.response.json();\r",
+							"\r",
+							"// 2. Lấy giá trị của access_token\r",
+							"// (Giả sử token nằm trong 'access_token', hãy thay đổi nếu tên khác)\r",
+							"var accessToken = jsonData.access_token;\r",
+							"\r",
+							"// 3. LƯU token vào biến môi trường\r",
+							"pm.environment.set(\"AUTH_TOKEN\", accessToken);\r",
+							"\r",
+							"// (Tùy chọn) In ra để kiểm tra\r",
+							"console.log(\"Đã lưu AUTH_TOKEN: \" + accessToken);"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
 			"request": {
 				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"username\": \"admin\",\r\n    \"password\": \"12345678\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseURL}}/api/users",
+					"host": [
+						"{{baseURL}}"
+					],
+					"path": [
+						"api",
+						"users"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "get_all_book",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Test 1: Kiểm tra status code là 200 OK\r",
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"var jsonData = pm.response.json();\r",
+							"// Test 2: Kiểm tra xem response có phải là một array (danh sách)\r",
+							"pm.test(\"Response is an array\", function () {\r",
+							"    pm.expect(jsonData).to.be.an('array');\r",
+							"});\r",
+							"\r",
+							"// Test 3: Kiểm tra danh sách không rỗng\r",
+							"pm.test(\"List is not empty\", function () {\r",
+							"    pm.expect(jsonData.length).to.be.above(0);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseURL}}/api/books",
+					"host": [
+						"{{baseURL}}"
+					],
+					"path": [
+						"api",
+						"books"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "loan_book",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Test 1: Kiểm tra status code là 201 Created\r",
+							"pm.test(\"Status code is 201\", function () {\r",
+							"    pm.response.to.have.status(201);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{AUTH_TOKEN}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
 				"header": [
-					{
-						"key": "Authorization",
-						"value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTc2MjQ0MTE4OSwianRpIjoiN2MzMTRmOGEtY2Y5Yi00M2ZmLWFmYjktZTgzOWU3NTczMmQ5IiwidHlwZSI6ImFjY2VzcyIsInN1YiI6IjEiLCJuYmYiOjE3NjI0NDExODksImNzcmYiOiJkZWMyZDlkYy02MTQ1LTRmNjctODhjMC1lNzlkYTc4MGJiNDAiLCJleHAiOjE3NjI0NDI5ODl9.viuSqcrXbyMAO9pfTvM6XvV496ADh79R-OZc_Lc341w",
-						"type": "text"
-					},
 					{
 						"key": "Content-Type",
 						"value": "application/json",
@@ -56,18 +157,109 @@
 			"response": []
 		},
 		{
-			"name": "Get transactions member 1",
+			"name": "get_transactions_member_1",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Test 1: Kiểm tra status code là 200 OK\r",
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"var jsonData = pm.response.json();\r",
+							"// Test 2: Kiểm tra xem response có phải là một array (danh sách)\r",
+							"pm.test(\"Response is an array\", function () {\r",
+							"    pm.expect(jsonData).to.be.an('array');\r",
+							"});\r",
+							"\r",
+							"// Test 3: Kiểm tra danh sách không rỗng\r",
+							"pm.test(\"List is not empty\", function () {\r",
+							"    pm.expect(jsonData.length).to.be.above(0);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
 			"request": {
 				"method": "GET",
-				"header": []
+				"header": [],
+				"url": {
+					"raw": "{{baseURL}}/api/members/1/transactions",
+					"host": [
+						"{{baseURL}}"
+					],
+					"path": [
+						"api",
+						"members",
+						"1",
+						"transactions"
+					]
+				}
 			},
 			"response": []
 		},
 		{
-			"name": "Get all member",
+			"name": "update_member_9",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Test 1: Kiểm tra status code là 200 OK\r",
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"// Test 2: Kiểm tra tên đã được cập nhật\r",
+							"var jsonData = pm.response.json();\r",
+							"pm.test(\"Name was updated\", function () {\r",
+							"    pm.expect(jsonData.name).to.eql(\"Mem9\");\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
 			"request": {
-				"method": "GET",
-				"header": []
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{AUTH_TOKEN}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"name\": \"Mem9\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseURL}}/api/members/9",
+					"host": [
+						"{{baseURL}}"
+					],
+					"path": [
+						"api",
+						"members",
+						"9"
+					]
+				}
 			},
 			"response": []
 		}

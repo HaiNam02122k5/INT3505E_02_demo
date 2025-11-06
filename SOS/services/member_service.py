@@ -32,7 +32,7 @@ class MemberService:
             db.session.add(new_member)
             cache.clear()
             db.session.commit()
-            return {'message': 'Thêm thành viên thành công', 'book': new_member.to_dict()}, 201
+            return {'message': 'Thêm thành viên thành công', 'member': new_member.to_dict()}, 201
         except Exception as e:
             db.session.rollback()
             return {'message': f'Lỗi DB: {e}'}, 500
@@ -51,7 +51,7 @@ class MemberService:
 
             cache.clear()
             db.session.commit()
-            return {'message': 'Cập nhật thành công', 'book': member.to_dict()}, 200
+            return {'message': 'Cập nhật thành công', 'member': member.to_dict()}, 200
         except Exception as e:
             db.session.rollback()
             return {'message': f'Lỗi khi cập nhật thông tin thành viên: {e}'}, 500
