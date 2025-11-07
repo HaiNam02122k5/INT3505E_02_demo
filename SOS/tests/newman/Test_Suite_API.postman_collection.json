@@ -4,7 +4,7 @@
 		"name": "Test_Suite_API",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "48537068",
-		"_collection_link": "https://nhnam200512-4089382.postman.co/workspace/c658eb44-109f-4ecf-8b2f-5ff0838f3226/collection/48537068-64d5ab94-8e9c-414f-bdde-b5188d621319?action=share&source=collection_link&creator=48537068"
+		"_collection_link": "https://nhnam200512-4089382.postman.co/workspace/V%C5%A9's-Team's-Workspace~c658eb44-109f-4ecf-8b2f-5ff0838f3226/collection/48537068-64d5ab94-8e9c-414f-bdde-b5188d621319?action=share&source=collection_link&creator=48537068"
 	},
 	"item": [
 		{
@@ -141,7 +141,7 @@
 					}
 				],
 				"url": {
-					"raw": "{{baseURL}}/api/members/1/transactions/2",
+					"raw": "{{baseURL}}/api/members/1/transactions/1",
 					"host": [
 						"{{baseURL}}"
 					],
@@ -150,7 +150,7 @@
 						"members",
 						"1",
 						"transactions",
-						"2"
+						"1"
 					]
 				}
 			},
@@ -218,7 +218,7 @@
 							"// Test 2: Kiểm tra tên đã được cập nhật\r",
 							"var jsonData = pm.response.json();\r",
 							"pm.test(\"Name was updated\", function () {\r",
-							"    pm.expect(jsonData.name).to.eql(\"Mem9\");\r",
+							"    pm.expect(jsonData.member.name).to.eql(\"Mem9\");\r",
 							"});"
 						],
 						"type": "text/javascript",
@@ -258,6 +258,43 @@
 						"api",
 						"members",
 						"9"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "delete_transaction",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{AUTH_TOKEN}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseURL}}/api/members/1/transactions/1",
+					"host": [
+						"{{baseURL}}"
+					],
+					"path": [
+						"api",
+						"members",
+						"1",
+						"transactions",
+						"1"
 					]
 				}
 			},

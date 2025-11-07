@@ -10,8 +10,8 @@ class LibraryUserBehavior(SequentialTaskSet):
         """Setup - Login và lấy token"""
         response = self.client.post("/api/users",
                                     json={
-                                        "username": "testuser",
-                                        "password": "testpass123"
+                                        "username": "admin",
+                                        "password": "12345678"
                                     }
                                     )
         if response.status_code == 200:

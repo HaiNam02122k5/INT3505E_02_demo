@@ -42,7 +42,7 @@ class TestMemberService:
         result, status = MemberService.create_member(data)
         assert status == 201
         assert result['message'] == 'Thêm thành viên thành công'
-        assert result['book']['name'] == 'New Member'
+        assert result['member']['name'] == 'New Member'
 
     def test_create_member_duplicate_phone(self, db_session, sample_member):
         """Test tạo thành viên với SĐT trùng"""
@@ -63,7 +63,7 @@ class TestMemberService:
         }
         result, status = MemberService.update_member(sample_member.id, data)
         assert status == 200
-        assert result['book']['name'] == 'Updated Name'
+        assert result['member']['name'] == 'Updated Name'
 
     def test_update_member_not_found(self, db_session):
         """Test cập nhật thành viên không tồn tại"""
