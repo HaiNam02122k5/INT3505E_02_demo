@@ -1,18 +1,24 @@
-from datetime import timedelta
-
 from flask import Flask
+from flask_cors import CORS
 from flask_restx import Api
 
-from SOS.extensions import jwt, db, cache
-from SOS.models import User
-from SOS.schemas import init_schemas
-from SOS.routes import init_member_routes, init_transaction_routes, init_book_routes, init_user_routes
 from SOS.config import Config
+from SOS.extensions import jwt, db, cache
+from SOS.routes import init_member_routes, init_transaction_routes, init_book_routes, init_user_routes
+from SOS.schemas import init_schemas
 
 
 def create_app():
     # Khởi tạo ứng dụng Flask
     app = Flask(__name__)
+
+    CORS(app, resources={
+        r"/api/*": {
+            "origins": ["http://localhost:5173"],
+            "methods": ["GET", "POST", "PUT", "DELETE"],
+            "allow_headers": ["Content-Type", "Authorization"]
+        }
+    })
 
     app.config.from_object(Config)
 
