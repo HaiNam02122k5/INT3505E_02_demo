@@ -18,6 +18,7 @@ const LibraryApp = () => {
   const [bookForm, setBookForm] = useState({ title: '', author: '', isbn: '', copies: 1 });
   const [memberForm, setMemberForm] = useState({ name: '', phone_number: '', address: '' });
   const [borrowForm, setBorrowForm] = useState({ member_id: '', book_id: '' });
+  const [createUserForm, setCreateUserForm] = useState({ username: '', password: '' });
   const [editMode, setEditMode] = useState({ active: false, type: '', id: null });
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -72,7 +73,7 @@ const LibraryApp = () => {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`${API_BASE}/users`, {
+      const res = await fetch(`${API_BASE}/users/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(loginForm)
@@ -87,6 +88,31 @@ const LibraryApp = () => {
       }
     } catch (err) {
       setError('Lỗi kết nối server');
+    }
+    setLoading(false);
+  };
+
+  // Create User
+  const handleCreateUser = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`${API_BASE}/users`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(createUserForm)
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        setSuccess(data.message);
+        setCreateUserForm({ username: '', password: '' });
+      } else {
+        setError(data.message);
+      }
+    } catch (err) {
+      setError('Lỗi khi tạo user')
     }
     setLoading(false);
   };
@@ -346,7 +372,8 @@ const LibraryApp = () => {
             {[
               { id: 'books', label: 'Sách', icon: Book },
               { id: 'members', label: 'Thành viên', icon: Users },
-              { id: 'transactions', label: 'Mượn/Trả', icon: ArrowLeftRight }
+              { id: 'transactions', label: 'Mượn/Trả', icon: ArrowLeftRight },
+              { id: 'users', label: 'Quản lý User', icon: LogIn}
             ].map(tab => (
               <button
                 key={tab.id}
@@ -722,6 +749,53 @@ const LibraryApp = () => {
               ) : (
                 <p className="text-gray-500 text-center py-8">Vui lòng chọn thành viên để xem lịch sử</p>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Users Tab */}
+        {activeTab === 'users' && (
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <Plus className="w-5 h-5" />
+                Tạo User Mới
+              </h2>
+              <form onSubmit={handleCreateUser} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tên đăng nhập
+                  </label>
+                  <input
+                    type="text"
+                    value={createUserForm.username}
+                    onChange={(e) => setCreateUserForm({...createUserForm, username: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    required
+                    minLength="3"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Mật khẩu
+                  </label>
+                  <input
+                    type="password"
+                    value={createUserForm.password}
+                    onChange={(e) => setCreateUserForm({...createUserForm, password: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    required
+                    minLength="6"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition disabled:opacity-50"
+                >
+                  {loading ? 'Đang xử lý...' : 'Tạo User'}
+                </button>
+              </form>
             </div>
           </div>
         )}

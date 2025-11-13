@@ -3,9 +3,11 @@ from flask_cors import CORS
 from flask_restx import Api
 
 from SOS.config import Config
-from SOS.extensions import jwt, db, cache
+from SOS.extensions import jwt, db, cache, bcrypt
+from SOS.models import User
 from SOS.routes import init_member_routes, init_transaction_routes, init_book_routes, init_user_routes
 from SOS.schemas import init_schemas
+from SOS.services import UserService
 
 
 def create_app():
@@ -40,6 +42,7 @@ def create_app():
     db.init_app(app)
     jwt.init_app(app)
     cache.init_app(app)
+    bcrypt.init_app(app)
 
     # Khởi tạo schemas
     schemas = init_schemas(api)
@@ -52,6 +55,7 @@ def create_app():
 
     with app.app_context():
         db.create_all()
+
 
     @app.route('/api/')
     def start():
